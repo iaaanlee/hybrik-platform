@@ -15,6 +15,13 @@ output:
   return_smpl_params: false
   return_mesh: false
 
+# Visualization Configuration (PyTorch3D Replacement)
+visualization:
+  backend: "trimesh+pyrender"  # Current visualization backend
+  debug_vis: true             # Enable debug visualization (off in production)
+  vis_output_dir: "./debug_vis"  # Output directory for debug visualizations
+  joint_order_doc: "./docs/joint_order.md"  # Joint ordering documentation
+
 # Input Limits
 limits:
   max_image_resolution: 2048  # pixels

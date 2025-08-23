@@ -2,6 +2,9 @@
 """
 HybrIK Runner - Core inference wrapper
 Handles model loading, preprocessing, inference, and postprocessing
+
+NOTE: Visualization backend has been replaced from PyTorch3D to trimesh + pyrender
+for Mac M1/M2 compatibility. PyTorch3D rendering is DEPRECATED/REMOVED.
 """
 
 import os
@@ -54,7 +57,11 @@ class HybrIKRunner:
             
             # Check if HybrIK is installed
             try:
-                sys.path.append('../HybrIK')  # Add HybrIK to path
+                # Add HybrIK to path
+                hybrik_path = '/Users/kihoonlee/self-workspace/skeleton_app/hybrik-platform/HybrIK'
+                if hybrik_path not in sys.path:
+                    sys.path.append(hybrik_path)
+                
                 from hybrik.models import builder
                 from hybrik.utils.config import update_config
                 from yacs.config import CfgNode as CN
@@ -263,6 +270,10 @@ class HybrIKRunner:
         if self.config['output']['return_mesh']:
             output['mesh'] = None  # Placeholder
         
+        # Add debug visualization if enabled
+        if self.config.get('visualization', {}).get('debug_vis', False):
+            self._generate_debug_visualization(joints_3d, output)
+        
         return output
     
     def get_joint_names(self):
@@ -274,3 +285,64 @@ class HybrIKRunner:
             'neck', 'left_collar', 'right_collar', 'head', 'left_shoulder', 'right_shoulder',
             'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hand', 'right_hand'
         ]
+    
+    def _generate_debug_visualization(self, joints_3d, output):
+        """
+        Generate debug visualization using trimesh + pyrender backend.
+        
+        Args:
+            joints_3d: Joint positions (J x 3)
+            output: Output dictionary to add visualization paths
+        """
+        try:
+            from vis.skeleton_plot import SkeletonPlotter, get_default_skeleton_edges_24
+            from vis.render_tm_pr import TriMeshPyRenderBackend, get_default_skeleton_edges
+            import os
+            from datetime import datetime
+            
+            # Get output directory
+            vis_output_dir = self.config.get('visualization', {}).get('vis_output_dir', './debug_vis')
+            os.makedirs(vis_output_dir, exist_ok=True)
+            
+            # Generate timestamp for unique filenames
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            # 1. Generate matplotlib skeleton plot
+            plotter = SkeletonPlotter()
+            skeleton_edges = get_default_skeleton_edges_24()
+            skeleton_plot_path = os.path.join(vis_output_dir, f'skeleton_plot_{timestamp}.png')
+            
+            success_plot = plotter.plot_skeleton_3d(
+                joints_3d, 
+                edges=skeleton_edges,
+                output_path=skeleton_plot_path,
+                title=f"3D Skeleton - {timestamp}"
+            )
+            
+            if success_plot:
+                output['debug_visualization'] = output.get('debug_visualization', {})
+                output['debug_visualization']['skeleton_plot'] = skeleton_plot_path
+            
+            # 2. Generate trimesh+pyrender skeleton rendering (if available)
+            try:
+                renderer = TriMeshPyRenderBackend(width=800, height=600)
+                render_edges = get_default_skeleton_edges()
+                skeleton_render_path = os.path.join(vis_output_dir, f'skeleton_render_{timestamp}.png')
+                
+                success_render = renderer.render_skeleton_offscreen(
+                    joints_3d,
+                    edges=render_edges, 
+                    output_path=skeleton_render_path
+                )
+                
+                if success_render:
+                    output['debug_visualization']['skeleton_render'] = skeleton_render_path
+                    
+            except Exception as e:
+                logger.warning(f"3D skeleton rendering failed: {e}")
+            
+            logger.info(f"Debug visualization generated in {vis_output_dir}")
+            
+        except Exception as e:
+            logger.warning(f"Debug visualization failed: {e}")
+            # Don't fail the main inference due to visualization issues

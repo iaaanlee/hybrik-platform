@@ -10,7 +10,15 @@ yacs>=0.1.8
 tqdm>=4.62.0
 scipy>=1.7.0
 matplotlib>=3.4.0
-# pytorch3d>=0.6.0  # Optional - install manually if needed
+# pytorch3d>=0.6.0  # DEPRECATED - Replaced with trimesh+pyrender for Mac M2 compatibility
+
+# Visualization Dependencies (PyTorch3D Replacement) - Mac M1/M2 Compatible
+trimesh>=4.0.0           # 3D mesh processing
+pyrender>=0.1.40         # Offscreen rendering
+PyOpenGL>=3.1.0          # OpenGL bindings
+PyOpenGL_accelerate>=3.1.0  # OpenGL acceleration
+pyglet>=2.0.0            # Windowing system (for pyrender)
+networkx>=3.0            # Graph operations (for trimesh)
 
 # Server Dependencies
 flask>=2.0.0
