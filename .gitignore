@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+
+# Model files (too large for git)
+pretrained_models/*.pth
+pretrained_models/*.pkl
+pretrained_models/smpl/
+pretrained_models/smpl-x/
+
+# Configuration (may contain sensitive paths)
+configs/*.yaml
+!configs/example_*.yaml
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Test outputs
+test_outputs/
+debug_images/
+
+# Docker
+.dockerignore

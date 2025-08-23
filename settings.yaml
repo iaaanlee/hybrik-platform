@@ -1,0 +1,39 @@
+# HybrIK Server Configuration
+
+# Model Configuration
+model:
+  hybrik_cfg: "configs/hybrik_hrnet.yaml"
+  hybrik_ckpt: "pretrained_models/hybrik_hrnet.pth"
+  smpl_model_dir: "pretrained_models/smpl"
+  device: "cpu"  # cpu, cuda, mps (for Apple Silicon)
+  
+# Output Configuration
+output:
+  units: "mm"  # mm, norm
+  coord_frame: "root-relative"  # root-relative, camera
+  return_2d_joints: true
+  return_smpl_params: false
+  return_mesh: false
+
+# Input Limits
+limits:
+  max_image_resolution: 2048  # pixels
+  max_file_mb: 10
+  request_timeout_ms: 30000
+  
+# Server Configuration
+server:
+  host: "0.0.0.0"
+  port: 8081
+  workers: 1
+  
+# Performance
+performance:
+  enable_warmup: true
+  warmup_iterations: 3
+  
+# Logging
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  log_requests: true
+  log_performance: true

@@ -1,0 +1,24 @@
+# Core Dependencies - Mac M2 Compatible
+torch==1.12.1
+torchvision==0.13.1
+numpy<2.0
+opencv-python>=4.5.0
+Pillow>=8.3.0
+
+# HybrIK Dependencies
+yacs>=0.1.8
+tqdm>=4.62.0
+scipy>=1.7.0
+matplotlib>=3.4.0
+# pytorch3d>=0.6.0  # Optional - install manually if needed
+
+# Server Dependencies
+flask>=2.0.0
+flask-cors>=3.0.10
+gunicorn>=20.1.0
+pyyaml>=5.4.0
+requests>=2.25.0
+
+# Utils
+imageio>=2.9.0
+easydict>=1.9
