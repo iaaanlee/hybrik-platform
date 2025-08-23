@@ -1,0 +1,15 @@
+{
+  "name": "hybrik-server",
+  "version": "1.0.0",
+  "description": "HybrIK 3D pose estimation REST API server",
+  "scripts": {
+    "start": "python app.py",
+    "dev": "./scripts/run.sh dev",
+    "prod": "./scripts/run.sh prod",
+    "test": "./scripts/healthcheck.sh",
+    "setup": "./scripts/setup.sh"
+  },
+  "keywords": ["hybrik", "3d-pose", "machine-learning", "flask", "api"],
+  "author": "Your Name",
+  "license": "MIT"
+}

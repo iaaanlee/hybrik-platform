@@ -34,11 +34,11 @@ COPY . .
 RUN mkdir -p pretrained_models configs
 
 # Expose port
-EXPOSE 8081
+EXPOSE 5002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:8081/health || exit 1
+    CMD curl -f http://localhost:5002/health || exit 1
 
 # Run server
 CMD ["python", "app.py"]

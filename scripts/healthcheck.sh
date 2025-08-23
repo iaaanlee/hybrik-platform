@@ -7,7 +7,7 @@ Tests server health and basic functionality
 set -e
 
 HOST=${1:-localhost}
-PORT=${2:-8081}
+PORT=${2:-5002}
 BASE_URL="http://${HOST}:${PORT}"
 
 echo "🏥 Health checking HybrIK Server at $BASE_URL..."

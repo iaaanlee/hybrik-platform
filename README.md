@@ -113,7 +113,7 @@ model:
 ./scripts/healthcheck.sh
 
 # Or manually
-curl http://localhost:8081/health
+curl http://localhost:5002/health
 
 # Comprehensive API test
 python test_image_analysis.py
@@ -148,7 +148,7 @@ POST /analyze-image
 
 **Multipart Upload:**
 ```bash
-curl -X POST -F "file=@image.jpg" http://localhost:8081/analyze-image
+curl -X POST -F "file=@image.jpg" http://localhost:5002/analyze-image
 ```
 
 **JSON Base64:**
@@ -156,7 +156,7 @@ curl -X POST -F "file=@image.jpg" http://localhost:8081/analyze-image
 curl -X POST \
   -H "Content-Type: application/json" \
   -d '{"image_b64": "base64_encoded_image"}' \
-  http://localhost:8081/analyze-image
+  http://localhost:5002/analyze-image
 ```
 
 **Response:**
@@ -217,7 +217,7 @@ limits:
 docker build -t hybrik-server .
 
 # Run container
-docker run -p 8081:8081 \
+docker run -p 5002:5002 \
   -v $(pwd)/pretrained_models:/app/pretrained_models \
   -v $(pwd)/configs:/app/configs \
   hybrik-server

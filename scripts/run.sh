@@ -32,7 +32,7 @@ python -c "import flask; print('Flask: OK')"
 if [ "$MODE" = "prod" ]; then
     echo "🏭 Starting production server with Gunicorn..."
     exec gunicorn \
-        --bind 0.0.0.0:8081 \
+        --bind 0.0.0.0:5002 \
         --workers 1 \
         --timeout 60 \
         --keepalive 2 \

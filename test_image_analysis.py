@@ -59,7 +59,7 @@ def test_health_endpoint():
     print("🔍 Testing health endpoint...")
     
     try:
-        response = requests.get('http://localhost:8081/health', timeout=5)
+        response = requests.get('http://localhost:5002/health', timeout=5)
         if response.status_code == 200:
             health_data = response.json()
             print(f"✅ Health check passed:")
@@ -94,7 +94,7 @@ def test_image_analysis():
         }
         
         print("   Sending test image for analysis...")
-        response = requests.post('http://localhost:8081/analyze-image', 
+        response = requests.post('http://localhost:5002/analyze-image', 
                                json=data, timeout=30)
         
         if response.status_code == 200:

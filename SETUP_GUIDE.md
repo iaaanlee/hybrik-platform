@@ -150,7 +150,7 @@ cd hybrik-server
 cd hybrik-server
 conda activate hybrik
 python app.py &
-curl http://localhost:8081/health
+curl http://localhost:5002/health
 ```
 
 **다음 선택사항**: 실제 HybrIK 모델 통합으로 Mock 데이터를 실제 추론 결과로 교체 🎯
