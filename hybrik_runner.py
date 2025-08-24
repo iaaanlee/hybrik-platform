@@ -224,8 +224,25 @@ class HybrIKRunner:
             joints_3d_flat = results['pred_xyz_jts_17'][0].cpu().numpy() if 'pred_xyz_jts_17' in results else None
             joints_3d = joints_3d_flat.reshape(-1, 3) if joints_3d_flat is not None else None
         
-        # HybrIK doesn't output joints_2d directly - we'll generate it in overlay
+        # Extract 2D joints from pred_uvd_jts (image coordinates U,V,D)
         joints_2d = None
+        if 'pred_uvd_jts' in results:
+            # DEBUG: Check raw pred_uvd_jts output
+            raw_uvd = results['pred_uvd_jts'][0].cpu().numpy()
+            logger.info(f"🔍 RAW pred_uvd_jts: shape={raw_uvd.shape}, raw_data[:10]={raw_uvd.flatten()[:10]}")
+            
+            # pred_uvd_jts contains 29 joints, take first 24 for consistency
+            uvd_joints = raw_uvd.reshape(29, 3)  # Reshape to (29, 3)
+            joints_2d = uvd_joints[:24, :2]  # Take first 24 joints, U,V coordinates only
+            
+            # DEBUG: Extensive logging
+            logger.info(f"🔍 UVD joints reshaped: shape={uvd_joints.shape}")
+            logger.info(f"🔍 First 5 UVD joints: {uvd_joints[:5]}")
+            logger.info(f"🔍 Extracted 2D joints: shape={joints_2d.shape}")
+            logger.info(f"🔍 First 5 2D joints: {joints_2d[:5]}")
+            logger.info(f"🔍 2D joints min/max: min={joints_2d.min():.2f}, max={joints_2d.max():.2f}")
+            logger.info(f"🔍 2D joints range X: [{joints_2d[:, 0].min():.1f}, {joints_2d[:, 0].max():.1f}]")
+            logger.info(f"🔍 2D joints range Y: [{joints_2d[:, 1].min():.1f}, {joints_2d[:, 1].max():.1f}]")
         
         # Use scores (1 - sigma) as confidence if available
         confidence = results['scores'][0].cpu().numpy() if 'scores' in results else None
@@ -273,20 +290,19 @@ class HybrIKRunner:
             
         # Add 2D overlay if enabled and have input image
         if self.config.get('visualization', {}).get('enable_2d_overlay', False):
-            if hasattr(self, '_current_input_image') and joints_3d is not None:
-                # For HybrIK, we generate 2D overlay from 3D joints
-                self._generate_2d_overlay(self._current_input_image, joints_3d, output)
+            if hasattr(self, '_current_input_image') and joints_2d is not None:
+                # For HybrIK, use actual 2D image coordinates from pred_uvd_jts
+                self._generate_2d_overlay(self._current_input_image, joints_2d, output)
         
         return output
     
     def get_joint_names(self):
-        """Get standard joint names in order"""
-        # TODO: Return actual HybrIK joint names
+        """Get HybrIK 24-joint names in order"""
         return [
             'pelvis', 'left_hip', 'right_hip', 'spine1', 'left_knee', 'right_knee',
             'spine2', 'left_ankle', 'right_ankle', 'spine3', 'left_foot', 'right_foot',
-            'neck', 'left_collar', 'right_collar', 'head', 'left_shoulder', 'right_shoulder',
-            'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_hand', 'right_hand'
+            'neck', 'left_collar', 'right_collar', 'jaw', 'left_shoulder', 'right_shoulder',
+            'left_elbow', 'right_elbow', 'left_wrist', 'right_wrist', 'left_thumb', 'right_thumb'
         ]
     
     def _generate_debug_visualization(self, joints_3d, output):
@@ -350,13 +366,13 @@ class HybrIKRunner:
             logger.warning(f"Debug visualization failed: {e}")
             # Don't fail the main inference due to visualization issues
     
-    def _generate_2d_overlay(self, input_image, joints_3d, output):
+    def _generate_2d_overlay(self, input_image, joints_2d, output):
         """
         Generate 2D overlay image with keypoints and skeleton
         
         Args:
             input_image: PIL Image object (original input)
-            joints_3d: 3D joint positions (24 x 3) - will be projected to 2D
+            joints_2d: 2D joint positions in image coordinates (24 x 2)
             output: Output dictionary to add overlay data
         """
         try:
@@ -373,37 +389,56 @@ class HybrIKRunner:
             # Create a copy for drawing
             overlay_img = img_array.copy()
             
-            # Project 3D joints to 2D by taking X and Y coordinates (drop Z)
-            # HybrIK outputs 3D coordinates in camera space
-            joints_2d = joints_3d[:, :2]  # Take only X and Y coordinates
-            
-            # Scale joints_2d from HybrIK input size (256x192) to original image size
+            # CORRECTION: pred_uvd_jts outputs NORMALIZED coordinates (-0.5 to +0.5)
+            # Need to convert to pixel coordinates first, then scale to original image size
             original_height, original_width = overlay_img.shape[:2]
             hybrik_height, hybrik_width = 256, 192  # HybrIK standard input size
             
+            # DEBUG: Check coordinate ranges before conversion
+            logger.info(f"🔍 BEFORE conversion - Image size: {original_width}x{original_height}")
+            logger.info(f"🔍 BEFORE conversion - HybrIK size: {hybrik_width}x{hybrik_height}")
+            logger.info(f"🔍 BEFORE conversion - Normalized coords range: X[{joints_2d[:, 0].min():.1f}, {joints_2d[:, 0].max():.1f}], Y[{joints_2d[:, 1].min():.1f}, {joints_2d[:, 1].max():.1f}]")
+            
+            # Step 1: Convert normalized coordinates (-0.5~+0.5) to HybrIK pixel coordinates (0~192, 0~256)
+            hybrik_pixel_coords = joints_2d.copy()
+            hybrik_pixel_coords[:, 0] = (joints_2d[:, 0] + 0.5) * hybrik_width   # X: normalized → 0~192
+            hybrik_pixel_coords[:, 1] = (joints_2d[:, 1] + 0.5) * hybrik_height  # Y: normalized → 0~256
+            
+            logger.info(f"🔍 AFTER normalization conversion - HybrIK pixel coords range: X[{hybrik_pixel_coords[:, 0].min():.1f}, {hybrik_pixel_coords[:, 0].max():.1f}], Y[{hybrik_pixel_coords[:, 1].min():.1f}, {hybrik_pixel_coords[:, 1].max():.1f}]")
+            
+            # Step 2: Scale from HybrIK pixel coordinates to original image size
             scale_x = original_width / hybrik_width
             scale_y = original_height / hybrik_height
             
-            # Scale joint coordinates to original image size
-            scaled_joints_2d = joints_2d.copy()
+            scaled_joints_2d = hybrik_pixel_coords.copy()
             scaled_joints_2d[:, 0] *= scale_x  # x coordinates
             scaled_joints_2d[:, 1] *= scale_y  # y coordinates
             
-            logger.info(f"Scaling joints from {hybrik_width}x{hybrik_height} to {original_width}x{original_height}")
-            logger.info(f"Scale factors: x={scale_x:.2f}, y={scale_y:.2f}")
-            logger.info(f"First joint original: {joints_2d[0]}, scaled: {scaled_joints_2d[0]}")
+            # DEBUG: Check coordinate ranges after scaling
+            logger.info(f"🔍 Scale factors: x={scale_x:.2f}, y={scale_y:.2f}")
+            logger.info(f"🔍 AFTER scaling - 2D coords range: X[{scaled_joints_2d[:, 0].min():.1f}, {scaled_joints_2d[:, 0].max():.1f}], Y[{scaled_joints_2d[:, 1].min():.1f}, {scaled_joints_2d[:, 1].max():.1f}]")
+            logger.info(f"🔍 First 3 joints - Normalized: {joints_2d[:3]}")
+            logger.info(f"🔍 First 3 joints - HybrIK pixels: {hybrik_pixel_coords[:3]}")
+            logger.info(f"🔍 First 3 joints - Final scaled: {scaled_joints_2d[:3]}")
             
-            # HybrIK 24-joint skeleton connections (simplified)
+            # Check how many joints are within image bounds
+            valid_joints = 0
+            for joint in scaled_joints_2d:
+                if (0 <= joint[0] < original_width and 0 <= joint[1] < original_height):
+                    valid_joints += 1
+            logger.info(f"🔍 Valid joints within image bounds: {valid_joints}/24")
+            
+            # HybrIK 24-joint skeleton connections (accurate)
             skeleton_connections = [
-                # Spine connections
-                (0, 3), (3, 6), (6, 9), (9, 12), (12, 15),  # pelvis -> head
-                # Left arm
+                # Spine connections: pelvis -> spine1 -> spine2 -> spine3 -> neck -> jaw
+                (0, 3), (3, 6), (6, 9), (9, 12), (12, 15),  
+                # Left arm: neck -> left_collar -> left_shoulder -> left_elbow -> left_wrist -> left_thumb
                 (12, 13), (13, 16), (16, 18), (18, 20), (20, 22),
-                # Right arm  
+                # Right arm: neck -> right_collar -> right_shoulder -> right_elbow -> right_wrist -> right_thumb  
                 (12, 14), (14, 17), (17, 19), (19, 21), (21, 23),
-                # Left leg
+                # Left leg: pelvis -> left_hip -> left_knee -> left_ankle -> left_foot
                 (0, 1), (1, 4), (4, 7), (7, 10),
-                # Right leg
+                # Right leg: pelvis -> right_hip -> right_knee -> right_ankle -> right_foot
                 (0, 2), (2, 5), (5, 8), (8, 11)
             ]
             
@@ -419,20 +454,36 @@ class HybrIKRunner:
                         cv2.line(overlay_img, pt1, pt2, (0, 255, 0), 3)  # Green lines, thicker for visibility
             
             # Draw keypoints using scaled coordinates
+            drawn_joints = 0
             for i, joint in enumerate(scaled_joints_2d):
                 pt = tuple(map(int, joint))
-                if 0 <= pt[0] < overlay_img.shape[1] and 0 <= pt[1] < overlay_img.shape[0]:
-                    # Different colors for different joint types
+                is_valid = (0 <= pt[0] < overlay_img.shape[1] and 0 <= pt[1] < overlay_img.shape[0])
+                
+                # DEBUG: Log each joint
+                if i < 5 or not is_valid:  # Log first 5 joints or invalid ones
+                    logger.info(f"🔍 Joint {i} ({self.get_joint_names()[i]}): coord={joint}, pt={pt}, valid={is_valid}")
+                
+                if is_valid:
+                    drawn_joints += 1
+                    # Different colors for different joint types (HybrIK 24-joint)
                     if i == 0:  # pelvis
                         color = (255, 0, 0)  # Red
-                    elif i == 15:  # head
+                    elif i == 15:  # jaw (head region)
                         color = (0, 0, 255)  # Blue
-                    else:
+                    elif i == 12:  # neck
+                        color = (0, 255, 255)  # Cyan
+                    elif i in [16, 17, 18, 19, 20, 21, 22, 23]:  # arms
+                        color = (255, 0, 255)  # Magenta
+                    elif i in [1, 2, 4, 5, 7, 8, 10, 11]:  # legs
+                        color = (0, 255, 0)  # Green
+                    else:  # spine and others
                         color = (255, 255, 0)  # Yellow
                     
                     # Larger circles for better visibility
-                    cv2.circle(overlay_img, pt, 6, color, -1)
-                    cv2.circle(overlay_img, pt, 7, (0, 0, 0), 1)  # Black border
+                    cv2.circle(overlay_img, pt, 8, color, -1)  # Larger radius
+                    cv2.circle(overlay_img, pt, 9, (0, 0, 0), 2)  # Thicker black border
+            
+            logger.info(f"🔍 Total joints drawn on overlay: {drawn_joints}/24")
             
             # Convert back to RGB and encode to base64
             if overlay_img.ndim == 3:
