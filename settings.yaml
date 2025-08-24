@@ -2,8 +2,8 @@
 
 # Model Configuration
 model:
-  hybrik_cfg: "configs/hybrik_hrnet.yaml"
-  hybrik_ckpt: "pretrained_models/hybrik_hrnet.pth"
+  hybrik_cfg: "configs/hybrik_hrnet.yaml"  # 별칭 생성 완료
+  hybrik_ckpt: "pretrained_models/hybrik_hrnet.pth"  # 아직 다운로드 필요
   smpl_model_dir: "pretrained_models/smpl"
   device: "cpu"  # cpu, cuda, mps (for Apple Silicon)
   
@@ -21,6 +21,7 @@ visualization:
   debug_vis: true             # Enable debug visualization (off in production)
   vis_output_dir: "./debug_vis"  # Output directory for debug visualizations
   joint_order_doc: "./docs/joint_order.md"  # Joint ordering documentation
+  enable_2d_overlay: true     # Enable 2D keypoint overlay on input images
 
 # Input Limits
 limits:
